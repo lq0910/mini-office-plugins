@@ -4,14 +4,20 @@
  * 计算 SHA-256 与体积，并写出 index.json。
  *
  * 本地：
- *   node scripts/build-index.mjs --owner lq0910 --repo mini-office-plugins --tag v1
+ *   node scripts/build-index.mjs --owner lq0910 --repo mini-office-plugins
  *
  * CI（GitHub Actions 自动注入环境变量）：
  *   node scripts/build-index.mjs
  *
  * 产物：
- *   dist-plugins/*.moext
+ *   packages/*.moext   （提交进仓库，供 raw.githubusercontent.com 分发）
  *   index.json
+ *
+ * 为什么不用 GitHub Release 资产：
+ * `github.com/.../releases/download/...` 会 302 到 objects.githubusercontent.com，
+ * 该域不带 `Access-Control-Allow-Origin`，浏览器与 Tauri WebView 的 fetch 都会被
+ * CORS 拦截。`raw.githubusercontent.com` 带 `*`，是唯一能在客户端直接下载的通道。
+ * 插件包只有 1KB 量级，提交进仓库的代价可以忽略。
  */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -19,10 +25,11 @@ import { join, relative, resolve } from 'node:path';
 import JSZip from 'jszip';
 
 const PLUGIN_EXT = 'moext';
+const PACKAGES_DIR = 'packages';
 const MAX_BYTES = 8 * 1024 * 1024;
 /**
  * 固定 zip 条目时间戳，保证同一份源码每次打包得到**完全相同的字节**。
- * 否则每次重新打包 SHA-256 都会变，索引里的校验值与 Release 资产对不上，
+ * 否则每次重新打包 SHA-256 都会变，索引里的校验值与仓库里的包对不上，
  * 用户安装时会报"插件包校验失败"。
  */
 const FIXED_DATE = new Date('1980-01-01T00:00:00Z');
@@ -66,11 +73,15 @@ if (repoArg.includes('/')) {
   repoName = repoArg;
 }
 if (!repoOwner || !repoName) fail(`无法确定仓库坐标：${repoArg}`);
-const tag = args.tag ?? process.env.GITHUB_REF_NAME ?? 'v1';
-const baseUrl = (args['base-url'] ?? `https://github.com/${repoOwner}/${repoName}/releases/download/${tag}`).replace(
-  /\/$/,
-  '',
-);
+// raw 通道必须指向**包含 packages/ 的分支**。不要用 tag：CI 是在 tag 检出后才打包的，
+// tag 里没有新产物，指向 tag 会 404。索引与包在同一提交里，天然对齐。
+const ref = args.ref ?? 'main';
+// 默认走 raw 通道；`--mode release` 留给自建镜像或需要 Release 页面的场景。
+const mode = args.mode ?? 'raw';
+const baseUrl =
+  mode === 'release'
+    ? (args['base-url'] ?? `https://github.com/${repoOwner}/${repoName}/releases/download/${args.tag ?? 'v1'}`).replace(/\/$/, '')
+    : `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${ref}/${PACKAGES_DIR}`;
 
 const root = resolve('plugins');
 let pluginDirs;
@@ -81,7 +92,7 @@ try {
 }
 if (pluginDirs.length === 0) fail('plugins/ 下没有任何插件');
 
-const outDir = resolve('dist-plugins');
+const outDir = resolve(PACKAGES_DIR);
 await mkdir(outDir, { recursive: true });
 
 const plugins = [];
