@@ -3,27 +3,33 @@
 这是 Mini Office 的官方插件源。客户端通过 GitHub API 读取根目录的 [`index.json`](index.json)，
 拿到插件列表后一键安装。
 
-不需要服务器、不需要审核后台。发布一个插件 = 提交一个目录 + 打一个 tag。
+不需要服务器、不需要审核后台。发布一个插件 = 提交一个目录 + `push`。
 
 ## 目录结构
 
 ```text
 .
 ├── index.json                 # 客户端唯一入口（由脚本生成，不要手改）
-├── plugins/
+├── plugins/                   # 源码：一个目录一个插件
 │   ├── theme-office-2003/
 │   │   └── manifest.json
 │   ├── theme-wps/
 │   │   └── manifest.json
 │   └── theme-office-365/
 │       └── manifest.json
+├── packages/                  # 产物：打包出的 .moext，必须提交
+│   ├── mini-office.theme-office-2003-1.0.0.moext
+│   ├── mini-office.theme-wps-1.0.0.moext
+│   └── mini-office.theme-office-365-1.0.0.moext
 ├── scripts/
 │   └── build-index.mjs        # 打包全部插件 + 计算 SHA-256 + 生成 index.json
 └── .github/workflows/
-    └── release.yml            # 打 tag 后自动打包、发 Release、提交索引
+    └── release.yml            # 打 tag 后自动打包、提交产物、发 Release 镜像
 ```
 
-`.moext` 产物与 `dist-plugins/` 不进版本库，由 CI 生成并挂到 Release。
+`.moext` 产物**必须提交进仓库**：客户端通过 `raw.githubusercontent.com` 下载。
+GitHub Release 资产不可用——下载会 302 到 `objects.githubusercontent.com`，
+该域不返回 CORS 头，WebView 里的 `fetch` 会被拦截。Release 只作人工下载镜像。
 
 ## 当前插件
 
@@ -37,41 +43,52 @@
 
 ```bash
 npm install
-node scripts/build-index.mjs --owner lq0910 --repo mini-office-plugins --tag v1
+node scripts/build-index.mjs --owner lq0910 --repo mini-office-plugins
 ```
 
 脚本会：
 
 1. 扫描 `plugins/*/manifest.json`；
-2. 打包为 `dist-plugins/<id>-<version>.moext`；
+2. 打包为 `packages/<id>-<version>.moext`；
 3. 计算 SHA-256 与体积；
-4. 写出 `index.json`。
+4. 写出 `index.json`，`download` 指向 raw 地址。
 
 打包固定了 zip 条目时间戳，**同一份源码重复打包得到完全相同的字节与哈希**。
-这一点很重要：否则每次重新打包哈希都会变，索引里的校验值与 Release 资产对不上，
+这一点很重要：否则每次重新打包哈希都会变，索引里的校验值与仓库里的包对不上，
 客户端安装时会报"插件包校验失败"。
 
 ## 发布
+
+正常发布就是一次普通提交：
+
+```bash
+node scripts/build-index.mjs
+git add index.json packages
+git commit -m "feat: 新增 xxx 插件"
+git push origin main
+```
+
+推送后 raw 上即可下载，客户端「刷新列表」就能看到。
+
+打 tag 是可选动作，只用于生成 Release 镜像：
 
 ```bash
 git tag v1
 git push origin v1
 ```
 
-`.github/workflows/release.yml` 会自动：
+`.github/workflows/release.yml` 会：
 
-1. 打包全部插件；
-2. 创建 Release 并上传 `.moext`；
-3. 把新的 `index.json` 提交回 `main`。
-
-客户端下次「刷新列表」即可看到。
+1. 打包全部插件到 `packages/`；
+2. 把 `index.json` 与 `packages/` 提交回 `main`（无变化则跳过）；
+3. 创建 Release 并把 `packages/*.moext` 作为附件上传（仅镜像，客户端不读）。
 
 ## 新增一个主题插件
 
 1. 新建 `plugins/<名字>/manifest.json`，参考现有主题；
 2. 本地跑一次 `build-index.mjs`，确认能通过打包（清单字段缺失会直接报错）；
 3. 在 Mini Office 里用「安装本地插件」选择生成的 `.moext`，先自测效果；
-4. 提交并打 tag。
+4. 提交 `plugins/`、`packages/`、`index.json` 并推送。
 
 ## 主题清单要点
 
