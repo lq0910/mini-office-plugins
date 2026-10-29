@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-29T08:22:49.589Z",
+  "updatedAt": "2026-10-29T09:46:11.928Z",
   "plugins": [
+    {
+      "id": "mini-office.pack-gov-doc",
+      "name": "公文排版助手",
+      "version": "1.0.0",
+      "publisher": "mini-office",
+      "tier": "declarative",
+      "permissions": [],
+      "download": "https://raw.githubusercontent.com/lq0910/mini-office-plugins/main/packages/mini-office.pack-gov-doc-1.0.0.moext",
+      "sha256": "e420c9c51cbcd258ea2f25f61c8a20b82e049c0158ae02c893ac8e7fc6693c88",
+      "size": 3540,
+      "description": "一键套用党政机关公文格式：仿宋三号、1.5 倍行距、首行缩进两字、标准页边距与三线表，并提供公文模板。全部为声明式宏，不运行任何插件代码。",
+      "license": "MIT"
+    },
     {
       "id": "mini-office.theme-office-2003",
       "name": "Office 2003 经典外观",

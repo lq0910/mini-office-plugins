@@ -57,7 +57,10 @@ async function walk(root, current = root, files = []) {
     if (entry.isDirectory()) await walk(root, full, files);
     else if (entry.isFile()) files.push(full);
   }
-  return files;
+  // 必须排序：readdir 的返回顺序由文件系统决定，同一份源码在不同机器（或同一机器
+  // 不同时刻）可能给出不同顺序，zip 条目顺序一变字节就变，SHA-256 跟着变。
+  // 单文件插件看不出来，多文件插件（带模板/资源）会直接破坏可重现打包。
+  return files.sort();
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -86,7 +89,9 @@ const baseUrl =
 const root = resolve('plugins');
 let pluginDirs;
 try {
-  pluginDirs = (await readdir(root, { withFileTypes: true })).filter((entry) => entry.isDirectory());
+  pluginDirs = (await readdir(root, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name));
 } catch {
   fail('找不到 plugins/ 目录');
 }
@@ -116,7 +121,14 @@ for (const dir of pluginDirs) {
     const bytes = await readFile(file);
     total += bytes.byteLength;
     if (total > MAX_BYTES) fail(`${dir.name}: 解压后超过 ${MAX_BYTES / 1024 / 1024} MB`);
-    zip.file(relative(pluginRoot, file).split('\\').join('/'), bytes, { date: FIXED_DATE });
+    // createFolders: false 是关键——JSZip 默认会为 `templates/` 这类父目录补一个
+    // 目录条目，而那个条目用的是**当前时间**，不是 FIXED_DATE。目录条目时间一变，
+    // 整包字节就变，SHA-256 跟着变，可重现打包当场失效（单文件插件不会触发，
+    // 带子目录的插件才会，所以很容易漏掉）。
+    zip.file(relative(pluginRoot, file).split('\\').join('/'), bytes, {
+      date: FIXED_DATE,
+      createFolders: false,
+    });
   }
 
   const buffer = await zip.generateAsync({

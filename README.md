@@ -11,6 +11,9 @@
 .
 ├── index.json                 # 客户端唯一入口（由脚本生成，不要手改）
 ├── plugins/                   # 源码：一个目录一个插件
+│   ├── pack-gov-doc/
+│   │   ├── manifest.json
+│   │   └── templates/gov-letter.docx
 │   ├── theme-office-2003/
 │   │   └── manifest.json
 │   ├── theme-wps/
@@ -18,11 +21,13 @@
 │   └── theme-office-365/
 │       └── manifest.json
 ├── packages/                  # 产物：打包出的 .moext，必须提交
+│   ├── mini-office.pack-gov-doc-1.0.0.moext
 │   ├── mini-office.theme-office-2003-1.0.0.moext
 │   ├── mini-office.theme-wps-1.0.0.moext
 │   └── mini-office.theme-office-365-1.0.0.moext
 ├── scripts/
-│   └── build-index.mjs        # 打包全部插件 + 计算 SHA-256 + 生成 index.json
+│   ├── build-index.mjs        # 打包全部插件 + 计算 SHA-256 + 生成 index.json
+│   └── make-template.mjs      # 生成公文模板 docx（二进制不适合手工维护）
 └── .github/workflows/
     └── release.yml            # 打 tag 后自动打包、提交产物、发 Release 镜像
 ```
@@ -35,9 +40,13 @@ GitHub Release 资产不可用——下载会 302 到 `objects.githubusercontent
 
 | 插件 | 类型 | 说明 |
 |---|---|---|
+| `mini-office.pack-gov-doc` | 功能（宏 + 模板） | 公文排版助手：套用公文版式、三线表、横向页面、冻结表头、表头底纹；附党政机关公文模板 |
 | `mini-office.theme-office-2003` | 主题 | Windows XP / Office 2003 Luna 风格：米黄底、直角凸起控件、紧凑密度、经典菜单栏 |
 | `mini-office.theme-wps` | 主题 | WPS Office 观感：冷灰分区、小圆角、默认密度 |
 | `mini-office.theme-office-365` | 主题 | Microsoft 365 Fluent 观感：中性灰、扁平控件、舒适密度 |
+
+功能插件不写代码，`contributes.commands` 里是 JSON 描述的宏步骤，由客户端按白名单解释执行。
+操作清单见主仓库的 `docs/plugin-macros.md`。
 
 ## 本地开发
 
@@ -83,12 +92,18 @@ git push origin v1
 2. 把 `index.json` 与 `packages/` 提交回 `main`（无变化则跳过）；
 3. 创建 Release 并把 `packages/*.moext` 作为附件上传（仅镜像，客户端不读）。
 
-## 新增一个主题插件
+## 新增一个插件
 
-1. 新建 `plugins/<名字>/manifest.json`，参考现有主题；
+1. 新建 `plugins/<名字>/manifest.json`，参考现有插件；
 2. 本地跑一次 `build-index.mjs`，确认能通过打包（清单字段缺失会直接报错）；
 3. 在 Mini Office 里用「安装本地插件」选择生成的 `.moext`，先自测效果；
 4. 提交 `plugins/`、`packages/`、`index.json` 并推送。
+
+模板之类的二进制资源用脚本生成，不要手工提交改动的二进制：
+
+```bash
+node scripts/make-template.mjs
+```
 
 ## 主题清单要点
 
