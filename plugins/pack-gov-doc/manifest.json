@@ -1,7 +1,7 @@
 {
   "id": "mini-office.pack-gov-doc",
   "name": "公文排版助手",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "mini-office",
   "description": "一键套用党政机关公文格式：仿宋三号、1.5 倍行距、首行缩进两字、标准页边距与三线表，并提供公文模板。全部为声明式宏，不运行任何插件代码。",
   "license": "MIT",
@@ -18,6 +18,7 @@
         "title": "套用公文版式",
         "description": "正文仿宋三号、1.5 倍行距、首行缩进两字，页边距按国标设置",
         "keywords": "公文 排版 格式 行距 仿宋 government",
+        "shortcut": "Mod+Shift+G",
         "steps": [
           { "op": "word.page.margins", "top": 132, "bottom": 132, "left": 106, "right": 106 },
           { "op": "word.paragraph.format", "alignment": "justify", "lineHeight": 1.5, "firstLineIndentPx": 32, "spaceBeforePx": 0, "spaceAfterPx": 0 },
@@ -29,6 +30,7 @@
         "title": "表格转三线表",
         "description": "把文档内所有表格改为首尾粗线、表头下细线、无竖线的三线表",
         "keywords": "三线表 表格 边框 table",
+        "shortcut": "Mod+Shift+T",
         "steps": [{ "op": "word.table.borders", "preset": "three-line" }]
       },
       {
